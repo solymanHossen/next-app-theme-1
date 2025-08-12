@@ -509,31 +509,42 @@ const ThemeProviderContext = createContext<ThemeProviderContext | undefined>(und
 export function ThemeProvider({
   children,
   defaultTheme = "default",
-  storageKey = "vite-ui-theme",
   ...props
 }: {
   children: React.ReactNode
   defaultTheme?: string
-  storageKey?: string
 } & React.ComponentProps<"div">) {
   const [theme, setTheme] = useState<string>(defaultTheme)
   const [isDark, setIsDark] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
 
+  // Fetch active theme from backend on mount
   useEffect(() => {
-    const root = window.document.documentElement
-    const storedTheme = localStorage.getItem(storageKey)
-    const storedDarkMode = localStorage.getItem(`${storageKey}-dark`)
-
-    if (storedTheme) {
-      setTheme(storedTheme)
+    const fetchActiveTheme = async () => {
+      try {
+        const response = await fetch('/api/themes/active')
+        if (response.ok) {
+          const data = await response.json()
+          setTheme(data.theme || defaultTheme)
+          setIsDark(data.isDark || false)
+        }
+      } catch (error) {
+        console.error('Error fetching active theme:', error)
+        // Fallback to default theme
+        setTheme(defaultTheme)
+        setIsDark(false)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    if (storedDarkMode) {
-      setIsDark(storedDarkMode === "true")
-    }
-  }, [storageKey])
+    fetchActiveTheme()
+  }, [defaultTheme])
 
+  // Apply theme to DOM and save to backend
   useEffect(() => {
+    if (isLoading) return
+
     const root = window.document.documentElement
     const currentTheme = themes.find((t) => t.name === theme)
 
@@ -547,14 +558,28 @@ export function ThemeProvider({
       root.classList.toggle("dark", isDark)
     }
 
-    localStorage.setItem(storageKey, theme)
-    localStorage.setItem(`${storageKey}-dark`, isDark.toString())
-  }, [theme, isDark, storageKey])
+    // Save to backend
+    const saveActiveTheme = async () => {
+      try {
+        await fetch('/api/themes/active', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ theme, isDark }),
+        })
+      } catch (error) {
+        console.error('Error saving active theme:', error)
+      }
+    }
+
+    saveActiveTheme()
+  }, [theme, isDark, isLoading])
 
   const value = {
     theme,
-    setTheme: (theme: string) => {
-      setTheme(theme)
+    setTheme: (newTheme: string) => {
+      setTheme(newTheme)
     },
     isDark,
     toggleDarkMode: () => {
