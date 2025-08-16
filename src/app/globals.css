@@ -155,7 +155,27 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
+    /* Ensure smooth transitions for theme changes */
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Smooth transitions for dynamic theme changes */
+  [data-theme] {
+    transition: all 0.3s ease;
+  }
+  
+  /* Improved focus styles that respect theme colors */
+  :focus-visible {
+    @apply outline-2 outline-ring outline-offset-2;
+  }
+}
+
+/* Theme-aware animations */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
